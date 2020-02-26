@@ -1,10 +1,10 @@
 module GenericForm exposing
-    ( initOrdinaryForm
-    , initReadonlyForm
-    , update
+    ( update
     , view
     )
 
+import Forms.Ordinary
+import Forms.Readonly
 import Html exposing (Html)
 import Html.Events as HE
 import Http
@@ -14,6 +14,7 @@ import Task exposing (Task)
 type alias SaveableForm formState formMsg payload =
     { view : formState -> Html formMsg
     , update : formMsg -> formState -> ( formState, Cmd formMsg )
+    , formState : formState
 
     -- alternative save for handling success/error elsewhere
     , save : formState -> Result (List String) (Task () payload)
@@ -23,15 +24,17 @@ type alias SaveableForm formState formMsg payload =
     }
 
 
-type alias ReadonlyForm formState formMsg =
+type alias NonSavingForm formState formMsg =
     { view : formState -> Html formMsg
     , update : formMsg -> formState -> ( formState, Cmd formMsg )
+    , formState : formState
     }
 
 
 initSaveableForm :
     (formState -> Html formMsg)
     -> (formMsg -> formState -> ( formState, Cmd formMsg ))
+    -> formState
     -> (formState -> Result (List String) (Task () payload))
     -> (formState -> List String)
     -> SaveableForm formState formMsg payload
@@ -39,17 +42,20 @@ initSaveableForm =
     SaveableForm
 
 
-initReadonlyForm :
+initNonSavingForm :
     (formState -> Html formMsg)
     -> (formMsg -> formState -> ( formState, Cmd formMsg ))
-    -> ReadonlyForm formState formMsg
-initReadonlyForm =
-    ReadonlyForm
+    -> formState
+    -> NonSavingForm formState formMsg
+initNonSavingForm =
+    NonSavingForm
 
 
-type GenericForm s m p
-    = Saveable (SaveableForm s m p)
-    | Readonly (ReadonlyForm s m)
+type alias GenericForm formState formMsg payload =
+    { formType : FormType formState formMsg payload
+    , formState : formState
+    , validation : List String
+    }
 
 
 type Msg formMsg
@@ -59,65 +65,75 @@ type Msg formMsg
     | FormMsg formMsg
 
 
+
+--type FormMsg
+--    = OrdinaryMsg Forms.Ordinary.Msg
+--    | ReadonlyMsg Forms.Readonly.Msg
+
+
+type FormType s m p
+    = Saveable (SaveableForm s m p)
+    | Readonly (NonSavingForm s m)
+
+
 update :
     Msg formMsg
     -> GenericForm formState formMsg formPayload
     -> ( GenericForm formState formMsg formPayload, Cmd (Msg formMsg) )
 update msg model =
-    case ( msg, model ) of
+    case ( msg, model.formType ) of
         ( Save, Saveable form ) ->
-            case form.validate form of
-                Result.Ok httpRequest ->
-                    ( { model | saveState = Saving, validationErrors = [] }
-                    , httpRequest
-                    , { saveSucceeded = False }
-                    )
+            case form.validate form.formState of
+                [] ->
+                    case form.save form.formState of
+                        Result.Ok httpRequest ->
+                            ( { model
+                                | validation = []
+                              }
+                            , Task.attempt (always SaveResponse) httpRequest
+                            )
 
-                Result.Err validationErrors ->
-                    ( { model | validationErrors = validationErrors }
-                    , Job.init
-                    , { saveSucceeded = False }
-                    )
+                        Result.Err validationErrors ->
+                            ( { model | validation = validationErrors }
+                            , Cmd.none
+                            )
 
-        --SaveResponseFail ->
-        --    ( { model | saveState = NotSaving }, Job.init, { saveSucceeded = False } )
-        --
-        --SaveResponseSuccess onSaveJob ->
-        --    ( model
-        --    , Job.map FormMsg onSaveJob
-        --    , { saveSucceeded = True }
-        --    )
-        FormMsg formMsg ->
+        ( Close, _ ) ->
+            ( { model | validation = [] }
+            , Cmd.none
+            )
+
+        ( SaveResponse, _ ) ->
+            -- update the model { model | ... } andThen
+            update Close model
+
+        ( FormMsg formMsg, Saveable form ) ->
             let
                 ( newFormState, formJob ) =
-                    model.update formMsg model.formState
+                    form.update formMsg form.formState
             in
-            ( { model | formState = newFormState }, Cmd.map FormMsg formJob, { saveSucceeded = False } )
+            ( { model | formType = Saveable { form | formState = newFormState } }
+            , Cmd.map FormMsg formJob
+            )
+
+        ( FormMsg formMsg, Readonly form ) ->
+            let
+                ( newFormState, formJob ) =
+                    form.update formMsg form.formState
+            in
+            ( { model | formType = Readonly { form | formState = newFormState } }
+            , Cmd.map FormMsg formJob
+            )
 
 
-saveForm :
-    SaveableForm s m r
-    -> Result (List String) (Task () (Msg m))
-saveForm store model =
-    let
-        mapToJob =
-            Result.map
-                (Job.fromHttpTaskWithErrorHandling
-                    (model.config.onSave model.formState store >> SaveResponseSuccess)
-                    SaveResponseFail
-                )
-    in
-    model.save store model.formState |> mapToJob
-
-
-view : GenericForm formState formMsg formPayload -> formState -> Html Msg
+view : GenericForm formState formMsg formPayload -> formState -> Html (Msg formMsg)
 view model formState =
-    case model of
+    case model.formType of
         Saveable form ->
             viewSaveable form formState
 
         Readonly form ->
-            form.view formState
+            viewReadonly form formState
 
 
 viewSaveable : SaveableForm formState formMsg payload -> formState -> Html (Msg formMsg)
@@ -136,3 +152,8 @@ viewSaveable form state =
         [ formHeader
         , formBody |> Html.map FormMsg
         ]
+
+
+viewReadonly : NonSavingForm formState formMsg -> formState -> Html (Msg formMsg)
+viewReadonly a b =
+    Html.text ""

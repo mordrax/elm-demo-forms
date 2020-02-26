@@ -15,6 +15,7 @@ type alias TEAForm =
 
     -- form data
     , formState : Maybe Ordinary
+    , validation : List String
     }
 
 
@@ -33,6 +34,7 @@ init =
     ( { title = ""
       , data = 0
       , formState = Nothing
+      , validation = []
       }
     , Cmd.none
     )
@@ -46,11 +48,12 @@ update msg model =
             ( model, Cmd.none )
 
         ( FormSave, Just formState ) ->
-            let
-                ( form1State, form1Cmd ) =
-                    Forms.Ordinary.save formState
-            in
-            ( { model | formState = Just form1State }, Cmd.map Form1Msg form1Cmd )
+            case Forms.Ordinary.save formState of
+                Result.Ok httpRequest ->
+                    ( model, Task.perform (always FormSaveResponse) httpRequest )
+
+                Result.Err errs ->
+                    ( { model | validation = errs }, Cmd.none )
 
         ( FormSave, Nothing ) ->
             -- invalid state, log error
@@ -63,11 +66,6 @@ update msg model =
 
         ( FormClose, _ ) ->
             ( { model | formState = Nothing }, Cmd.none )
-
-
-validate : TEAForm -> List String
-validate model =
-    []
 
 
 view : TEAForm -> Html Msg

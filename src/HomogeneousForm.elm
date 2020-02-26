@@ -1,12 +1,24 @@
 module HomogeneousForm exposing (..)
 
-import Form1 exposing (Form1)
 import Forms.Headless exposing (Headless)
 import Forms.Ordinary exposing (Ordinary)
 import Forms.Readonly exposing (Readonly)
 import Html exposing (Html)
 import Html.Events as HE
 import Task exposing (Task)
+
+
+type alias HomogeneousForm =
+    { formState : FormState
+    , validation : List String
+    }
+
+
+type FormState
+    = NoForm
+    | Form1State Ordinary
+    | Form2State Readonly
+    | Form3State Headless
 
 
 type Msg
@@ -17,23 +29,10 @@ type Msg
     | Close
 
 
-type alias HomogeneousForm =
-    { formState : FormState
-    , validation : List String
-    }
-
-
 type OpenForm
     = OpenForm1
     | OpenForm2
     | OpenForm3
-
-
-type FormState
-    = NoForm
-    | Form1State Ordinary
-    | Form2State Readonly
-    | Form3State Headless
 
 
 type FormMsg
