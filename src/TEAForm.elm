@@ -1,6 +1,6 @@
 module TAEForm exposing (..)
 
-import Form1 exposing (Form1)
+import Forms.Ordinary exposing (Ordinary)
 import Html exposing (Html)
 import Html.Events as HE
 import Task
@@ -14,7 +14,7 @@ type alias TEAForm =
     , data : Int
 
     -- form data
-    , formState : Maybe Form1
+    , formState : Maybe Ordinary
     }
 
 
@@ -25,7 +25,7 @@ type Msg
     | FormClose
     | FormSave
     | FormSaveResponse
-    | Form1Msg Form1.Msg
+    | Form1Msg Forms.Ordinary.Msg
 
 
 init : ( TEAForm, Cmd Msg )
@@ -48,7 +48,7 @@ update msg model =
         ( FormSave, Just formState ) ->
             let
                 ( form1State, form1Cmd ) =
-                    Form1.save formState
+                    Forms.Ordinary.save formState
             in
             ( { model | formState = Just form1State }, Cmd.map Form1Msg form1Cmd )
 
@@ -81,7 +81,7 @@ view model =
 
         formBody formState =
             formState
-                |> (Form1.view >> Html.map Form1Msg)
+                |> (Forms.Ordinary.view >> Html.map Form1Msg)
 
         form formState =
             Html.div [] [ formHeader, formBody formState ]

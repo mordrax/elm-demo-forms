@@ -26,10 +26,11 @@ type FormState
 type Msg
     = -- page msg
       OwnMsg
-      -- form msg
+      -- form handling msg
     | FormClose
     | FormSave
     | FormSaveResponse
+      -- form msg
     | Inc
 
 
