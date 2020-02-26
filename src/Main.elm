@@ -1,8 +1,13 @@
 module Main exposing (..)
 
 import Browser
+import Form1
+import Form2Readonly
+import Form3Headless
+import Good.FormManager
 import Html exposing (Html, div, h1, img, text)
 import Html.Attributes exposing (src)
+import Ugly.FormManager
 
 
 

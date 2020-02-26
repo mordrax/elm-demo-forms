@@ -31,3 +31,8 @@ view model =
 save : Form1 -> ( Form1, Cmd Msg )
 save model =
     ( model, Cmd.none )
+
+
+validate : Form1 -> List String
+validate model =
+    []

@@ -1,4 +1,4 @@
-module Bad.FormManager exposing (..)
+module Ugly.FormManager exposing (..)
 
 import Form1 exposing (Form1)
 import Html exposing (Html)
