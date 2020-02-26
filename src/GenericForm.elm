@@ -1,4 +1,4 @@
-module Good.FormManager exposing
+module GenericForm exposing
     ( initOrdinaryForm
     , initReadonlyForm
     , update
@@ -6,16 +6,18 @@ module Good.FormManager exposing
     )
 
 import Html exposing (Html)
+import Html.Events as HE
 import Http
 import Task exposing (Task)
 
 
-type alias OrdinaryForm formState formMsg response =
+type alias SaveableForm formState formMsg payload =
     { view : formState -> Html formMsg
     , update : formMsg -> formState -> ( formState, Cmd formMsg )
 
     -- alternative save for handling success/error elsewhere
-    , save : formState -> Result (List String) (Task () response)
+    , save : formState -> Result (List String) (Task () payload)
+    , validate : formState -> List String
 
     --, save : formState -> Cmd formMsg
     }
@@ -27,42 +29,44 @@ type alias ReadonlyForm formState formMsg =
     }
 
 
-initOrdinaryForm :
+initSaveableForm :
     (formState -> Html formMsg)
     -> (formMsg -> formState -> ( formState, Cmd formMsg ))
-    -> (formState -> Result (List String) (Task () response))
-    -> OrdinaryForm formState formMsg response
-initOrdinaryForm a b c =
-    OrdinaryForm a b c
+    -> (formState -> Result (List String) (Task () payload))
+    -> (formState -> List String)
+    -> SaveableForm formState formMsg payload
+initSaveableForm =
+    SaveableForm
 
 
 initReadonlyForm :
     (formState -> Html formMsg)
     -> (formMsg -> formState -> ( formState, Cmd formMsg ))
     -> ReadonlyForm formState formMsg
-initReadonlyForm a b =
-    ReadonlyForm a b
+initReadonlyForm =
+    ReadonlyForm
 
 
-type FormManager s m p
-    = Ordinary (OrdinaryForm s m p)
+type GenericForm s m p
+    = Saveable (SaveableForm s m p)
     | Readonly (ReadonlyForm s m)
 
 
 type Msg formMsg
-    = SaveRequest
+    = Save
+    | Close
     | SaveResponse
     | FormMsg formMsg
 
 
 update :
     Msg formMsg
-    -> FormManager formState formMsg formPayload
-    -> ( FormManager formState formMsg formPayload, Cmd (Msg formMsg) )
+    -> GenericForm formState formMsg formPayload
+    -> ( GenericForm formState formMsg formPayload, Cmd (Msg formMsg) )
 update msg model =
-    case msg of
-        SaveRequest ->
-            case model of
+    case ( msg, model ) of
+        ( Save, Saveable form ) ->
+            case form.validate form of
                 Result.Ok httpRequest ->
                     ( { model | saveState = Saving, validationErrors = [] }
                     , httpRequest
@@ -92,7 +96,7 @@ update msg model =
 
 
 saveForm :
-    OrdinaryForm s m r
+    SaveableForm s m r
     -> Result (List String) (Task () (Msg m))
 saveForm store model =
     let
@@ -106,11 +110,29 @@ saveForm store model =
     model.save store model.formState |> mapToJob
 
 
-view : FormManager formState formMsg formPayload -> formState -> Html Msg
+view : GenericForm formState formMsg formPayload -> formState -> Html Msg
 view model formState =
     case model of
-        Ordinary form ->
-            form.view formState
+        Saveable form ->
+            viewSaveable form formState
 
         Readonly form ->
             form.view formState
+
+
+viewSaveable : SaveableForm formState formMsg payload -> formState -> Html (Msg formMsg)
+viewSaveable form state =
+    let
+        formHeader =
+            Html.div []
+                [ Html.button [ HE.onClick Save ] [ Html.text "Save" ]
+                , Html.button [ HE.onClick Close ] [ Html.text "Close" ]
+                ]
+
+        formBody =
+            form.view state
+    in
+    Html.div []
+        [ formHeader
+        , formBody |> Html.map FormMsg
+        ]

@@ -24,11 +24,11 @@ update msg model =
             ( model, Cmd.none )
 
 
-save : Headless -> Result (List String) (Task () (Cmd Msg))
+save : Headless -> Result (List String) (Task () String)
 save model =
     case validate model of
         [] ->
-            Result.Ok (Task.succeed Cmd.none)
+            Result.Ok (Task.succeed "Data")
 
         errs ->
             Result.Err errs

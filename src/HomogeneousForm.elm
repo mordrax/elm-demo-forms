@@ -52,7 +52,21 @@ update msg model =
             updateForm formMsg model
 
         Save ->
-            saveForm model
+            case saveForm model of
+                Result.Err err ->
+                    ( { model | validation = err }, Cmd.none )
+
+                Result.Ok task ->
+                    ( model, Task.attempt (always SaveResponse) task )
+
+        SaveResponse ->
+            --update the model, close the form
+            ( { model
+                | formState = NoForm
+                , validation = []
+              }
+            , Cmd.none
+            )
 
         Close ->
             ( { model | formState = NoForm }
@@ -95,8 +109,11 @@ updateForm formMsg model =
             Forms.Headless.update msg state
                 |> mapStateMsg Form3State Form3Msg model
 
+        _ ->
+            ( model, Cmd.none )
 
-saveForm : HomogeneousForm -> Result (List String) (Task () (Cmd Msg))
+
+saveForm : HomogeneousForm -> Result (List String) (Task () String)
 saveForm model =
     case model.formState of
         NoForm ->
@@ -104,8 +121,14 @@ saveForm model =
 
         Form1State formState ->
             Forms.Ordinary.save formState
-                -- shitmozles...
-                |> Result.map (Task.map (Cmd.map (Form1Msg >> FormMsg)))
+
+        Form2State formState ->
+            -- can't save as form is readonly
+            --Forms.Readonly.save formState
+            Result.Err [ "Cannot save the form, does not support saving." ]
+
+        Form3State formState ->
+            Forms.Headless.save formState
 
 
 view : HomogeneousForm -> Html Msg
@@ -136,5 +159,7 @@ view model =
         Form3State formState ->
             Html.div []
                 [ formHeader
-                , Forms.Headless.view formState |> Html.map (Form3Msg >> FormMsg)
+
+                -- can't show this, as the form has no view
+                --, Forms.Headless.view formState |> Html.map (Form3Msg >> FormMsg)
                 ]

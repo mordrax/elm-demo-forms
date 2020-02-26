@@ -29,11 +29,11 @@ view model =
     Html.text ""
 
 
-save : Ordinary -> Result (List String) (Task () (Cmd Msg))
+save : Ordinary -> Result (List String) (Task () String)
 save model =
     case validate model of
         [] ->
-            Result.Ok (Task.succeed Cmd.none)
+            Result.Ok (Task.succeed "Data")
 
         errs ->
             Result.Err errs
