@@ -83,20 +83,22 @@ update :
 update msg model =
     case ( msg, model.formType ) of
         ( Save, Saveable form ) ->
-            case form.validate form.formState of
-                [] ->
-                    case form.save form.formState of
-                        Result.Ok httpRequest ->
-                            ( { model
-                                | validation = []
-                              }
-                            , Task.attempt (always SaveResponse) httpRequest
-                            )
+            case form.save form.formState of
+                Result.Ok httpRequest ->
+                    ( { model
+                        | validation = []
+                      }
+                    , Task.attempt (always SaveResponse) httpRequest
+                    )
 
-                        Result.Err validationErrors ->
-                            ( { model | validation = validationErrors }
-                            , Cmd.none
-                            )
+                Result.Err validationErrors ->
+                    ( { model | validation = validationErrors }
+                    , Cmd.none
+                    )
+
+        ( Save, _ ) ->
+            -- log error about trying to save a non-saveable form
+            ( model, Cmd.none )
 
         ( Close, _ ) ->
             ( { model | validation = [] }

@@ -1,4 +1,4 @@
-module TAEForm exposing (..)
+module TEAForm exposing (..)
 
 import Forms.Ordinary exposing (Ordinary)
 import Html exposing (Html)
@@ -22,11 +22,12 @@ type alias TEAForm =
 type Msg
     = -- page msg
       OwnMsg
-      -- form msg
+      -- form handling msg
     | FormClose
     | FormSave
     | FormSaveResponse
-    | Form1Msg Forms.Ordinary.Msg
+      -- form msg
+    | FormOrdinaryMsg Forms.Ordinary.Msg
 
 
 init : ( TEAForm, Cmd Msg )
@@ -50,7 +51,7 @@ update msg model =
         ( FormSave, Just formState ) ->
             case Forms.Ordinary.save formState of
                 Result.Ok httpRequest ->
-                    ( model, Task.perform (always FormSaveResponse) httpRequest )
+                    ( model, Task.attempt (always FormSaveResponse) httpRequest )
 
                 Result.Err errs ->
                     ( { model | validation = errs }, Cmd.none )
@@ -67,6 +68,17 @@ update msg model =
         ( FormClose, _ ) ->
             ( { model | formState = Nothing }, Cmd.none )
 
+        ( FormOrdinaryMsg formMsg, Just formState ) ->
+            let
+                ( newFormState, formCmd ) =
+                    Forms.Ordinary.update formMsg formState
+            in
+            ( { model | formState = Just newFormState }, Cmd.map FormOrdinaryMsg formCmd )
+
+        ( FormOrdinaryMsg _, _ ) ->
+            -- log error about msgs coming when no form exists
+            ( model, Cmd.none )
+
 
 view : TEAForm -> Html Msg
 view model =
@@ -79,7 +91,7 @@ view model =
 
         formBody formState =
             formState
-                |> (Forms.Ordinary.view >> Html.map Form1Msg)
+                |> (Forms.Ordinary.view >> Html.map FormOrdinaryMsg)
 
         form formState =
             Html.div [] [ formHeader, formBody formState ]
