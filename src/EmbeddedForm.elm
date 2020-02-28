@@ -5,7 +5,19 @@ import Html.Events as HE
 import Task
 
 
-{-| Form state embedded in the parent page. Parent handles all form based logistics.
+{-| Form state and controls embedded in the parent page.
+Parent handles all form based logistics.
+
+    Pros:
+    - Ultimate flexibility
+    - Everything in one place
+    - Easiest solution
+
+    Cons:
+    - Repetition of mundane mechanics ( closing, validation )
+    - Repetition of logic and behaviour ( error handling, saving )
+    - Coupling
+
 -}
 type alias EmbeddedForm =
     { -- own data
@@ -20,18 +32,18 @@ type alias EmbeddedForm =
 
 type FormState
     = NotOpen
-    | Open Int
+    | Open { formData : Int }
 
 
 type Msg
-    = -- page msg
-      OwnMsg
+    = -- bunch of page msgs
+      OwnMsgs
       -- form handling msg
     | FormClose
     | FormSave
     | FormSaveResponse
-      -- form msg
-    | Inc
+      -- bunch of form msgs
+    | FormMsgs
 
 
 init : ( EmbeddedForm, Cmd Msg )
@@ -48,22 +60,25 @@ init =
 update : Msg -> EmbeddedForm -> ( EmbeddedForm, Cmd Msg )
 update msg model =
     case msg of
-        OwnMsg ->
+        OwnMsgs ->
             ( model, Cmd.none )
 
-        Inc ->
+        FormMsgs ->
             case model.formState of
                 NotOpen ->
                     -- we have a invalid state, do some error handling
                     ( model, Cmd.none )
 
-                Open x ->
-                    ( { model | formState = Open (x + 1) }, Cmd.none )
+                Open formData ->
+                    -- perform some update to the form
+                    ( { model | formState = Open { formData | formData = formData.formData + 1 } }
+                    , Cmd.none
+                    )
 
         FormSave ->
-            case validate model of
+            case validate model.formState of
                 [] ->
-                    ( model, toCmd FormSaveResponse )
+                    ( model, Task.perform (always FormSaveResponse) (Task.succeed ()) )
 
                 errs ->
                     ( { model | validation = errs }, Cmd.none )
@@ -75,13 +90,36 @@ update msg model =
             ( { model | formState = NotOpen }, Cmd.none )
 
 
-validate : EmbeddedForm -> List String
-validate model =
-    []
+validate : FormState -> List String
+validate formState =
+    case formState of
+        NotOpen ->
+            []
+
+        Open data ->
+            -- do some validations
+            []
 
 
 view : EmbeddedForm -> Html Msg
 view model =
+    let
+        pageView =
+            Html.text "Page Data"
+    in
+    case model.formState of
+        Open formData ->
+            Html.div []
+                [ viewForm formData model.validation
+                , pageView
+                ]
+
+        NotOpen ->
+            pageView
+
+
+viewForm : { formData : Int } -> List String -> Html Msg
+viewForm formState validation =
     let
         formHeader =
             Html.div []
@@ -92,24 +130,9 @@ view model =
         formBody =
             Html.div []
                 [ Html.div []
-                    (List.map Html.text model.validation)
-                , Html.button [ HE.onClick Inc ] [ Html.text "Inc" ]
+                    (List.map Html.text validation)
+
+                -- display form data
                 ]
-
-        form =
-            Html.div [] [ formHeader, formBody ]
-
-        pageView =
-            Html.text "Page Data"
     in
-    case model.formState of
-        Open data ->
-            Html.div [] [ form, pageView ]
-
-        NotOpen ->
-            pageView
-
-
-toCmd : msg -> Cmd msg
-toCmd msg =
-    Task.perform identity (Task.succeed msg)
+    Html.div [] [ formHeader, formBody ]

@@ -6,7 +6,18 @@ import Html.Events as HE
 import Task
 
 
-{-| Form state embedded in the parent page. Parent handles all form based logistics.
+{-| Form state and controls no longer embedded in the parent page but rather nested under the parent.
+Parent still handles all form based logistics, but form itself handles it's own Msg, state updates
+
+    Pros:
+    - Ultimate flexibility
+    - Explicit coupling by segregation of responsibilities
+
+    Cons:
+    - Repetition of mundane mechanics ( closing, validation )
+    - Repetition of logic and behaviour ( error handling, saving )
+    - Unncecessary dependency of state ( form state depends on the page existing )
+
 -}
 type alias TEAForm =
     { -- own data
@@ -75,7 +86,7 @@ update msg model =
             in
             ( { model | formState = Just newFormState }, Cmd.map FormOrdinaryMsg formCmd )
 
-        ( FormOrdinaryMsg _, _ ) ->
+        ( FormOrdinaryMsg _, Nothing ) ->
             -- log error about msgs coming when no form exists
             ( model, Cmd.none )
 

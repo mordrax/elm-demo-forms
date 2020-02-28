@@ -8,6 +8,18 @@ import Html.Events as HE
 import Task exposing (Task)
 
 
+{-| Form state and controls nested under a 'form manager' parent which does not necessarily have to be any particular page.
+Parent still handles all form based logistics, but form itself handles it's own Msg, state updates
+
+    Pros:
+    - No coupling between a form and a page ( can live as siblings )
+    - Form handling logic and behaviour is implemented once
+
+    Cons:
+    - All forms must conform to the same behaviour and therefore the same output type
+      Any deviation from the above behaviour becomes very messy to manage
+
+-}
 type alias HomogeneousForm =
     { formState : FormState
     , validation : List String

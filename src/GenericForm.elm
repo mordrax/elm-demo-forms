@@ -3,6 +3,8 @@ module GenericForm exposing
     , view
     )
 
+-- forms are decoupled explicitly and practically speaking implicitly too
+
 import Forms.Ordinary
 import Forms.Readonly
 import Html exposing (Html)
@@ -11,6 +13,21 @@ import Http
 import Task exposing (Task)
 
 
+{-| Form state and controls nested under a 'form manager' parent which does not necessarily have to be any particular page.
+Parent still handles all form based logistics and is decoupled from the form.
+
+    Pros:
+    - No coupling between a form and a page ( can live as siblings )
+    - No coupling from a form to the parent of the form
+    - Form handling logic and behaviour is implemented once
+    -
+
+    Cons:
+    - Parameterised types will product type inference errors which are tricky for beginners/pros alike
+    - Not simple complex
+    -
+
+-}
 type alias SaveableForm formState formMsg payload =
     { view : formState -> Html formMsg
     , update : formMsg -> formState -> ( formState, Cmd formMsg )
